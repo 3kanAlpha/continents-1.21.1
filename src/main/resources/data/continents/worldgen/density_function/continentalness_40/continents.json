@@ -1,0 +1,1 @@
+{"type":"minecraft:range_choice","input":"continents:continentalness_40/crudo","min_inclusive":-10.0,"max_exclusive":-0.9,"when_in_range":{"type":"minecraft:add","argument1":-0.2232,"argument2":{"type":"minecraft:mul","argument1":"continents:continentalness_40/crudo","argument2":0.752}},"when_out_of_range":"continents:continentalness_40/crudo"}

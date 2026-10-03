@@ -54,6 +54,7 @@ neoForge {
     runs {
         client {
             client()
+            systemProperty 'continents.clientSmokeTest', project.findProperty('clientSmokeTest') ?: 'false'
             // Comma-separated list of namespaces to load gametests from. Empty = all namespaces.
             systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
         }
@@ -187,4 +188,10 @@ idea {
         downloadSources = true
         downloadJavadoc = true
     }
+}
+
+// The GameTest runs in development; distribute only the Mod itself.
+tasks.named('jar').configure {
+    from('LICENSE')
+    exclude('com/fuzilogik/continents/gametest/**', 'data/continents/structure/empty.nbt')
 }

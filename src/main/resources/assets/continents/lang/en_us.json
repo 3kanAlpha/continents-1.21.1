@@ -1,0 +1,13 @@
+{
+  "generator.continents.continents": "Continents",
+  "continents.slider.title": "Continents",
+  "continents.slider.current": "Current generation",
+  "continents.slider.classic": "Classic continents (1.6.4)",
+  "continents.slider.intermediate": "Continentalness: %s",
+  "continents.map.stop_missing": "Missing datapack for continentalness value %s",
+  "continents.map.unknown_settings": "No noise_settings registered with id %s",
+  "continents.map.busy": "A map is already being generated, wait for it to finish.",
+  "continents.map.generating": "Generating map (%s, radius %s)...",
+  "continents.map.error": "Map generation failed (details in the server log).",
+  "continents.map.done": "Map ready (%ss): %s"
+}

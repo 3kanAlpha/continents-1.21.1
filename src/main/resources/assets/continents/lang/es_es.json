@@ -1,0 +1,13 @@
+{
+  "generator.continents.continents": "Continentes",
+  "continents.slider.title": "Continentes",
+  "continents.slider.current": "Generación actual",
+  "continents.slider.classic": "Continentes clásicos (1.6.4)",
+  "continents.slider.intermediate": "Continentalidad: %s",
+  "continents.map.stop_missing": "No se encontró el datapack del valor de continentalidad %s",
+  "continents.map.unknown_settings": "No existe un noise_settings registrado con id %s",
+  "continents.map.busy": "Ya se está generando un mapa, espera a que termine.",
+  "continents.map.generating": "Generando mapa (%s, radio %s)...",
+  "continents.map.error": "Error generando el mapa (detalles en el log del servidor).",
+  "continents.map.done": "Mapa listo (%ss): %s"
+}

@@ -1,25 +1,117 @@
+# Old Continents Slider — Minecraft 1.21.1 NeoForge
 
-Installation information
-=======
+Old Continents の大陸性スライダー、ワールドプリセット、バイオーム分布図コマンドを Minecraft 1.21.1 / NeoForge に移植したプロジェクトです。Mod ID は `continents`、元作者は Fuzilogik、ライセンスは MIT です。
 
-This template repository can be directly cloned to get you started with a new
-mod. Simply create a new repository cloned from this one, by following the
-instructions provided by [GitHub](https://docs.github.com/en/repositories/creating-and-managing-repositories/creating-a-repository-from-a-template).
+## ビルドと導入
 
-Once you have your clone, simply open the repository in the IDE of your choice. The usual recommendation for an IDE is either IntelliJ IDEA or Eclipse.
+- JDK 21
+- Minecraft 1.21.1
+- NeoForge 21.1.252 以降の 21.1 系
 
-If at any point you are missing libraries in your IDE, or you've run into problems you can
-run `gradlew --refresh-dependencies` to refresh the local cache. `gradlew clean` to reset everything 
-{this does not affect your code} and then start the process again.
+このフォルダで、同梱の Gradle Wrapper を実行してください。
 
-Mapping Names:
-============
-By default, the MDK is configured to use the official mapping names from Mojang for methods and fields 
-in the Minecraft codebase. These names are covered by a specific license. All modders should be aware of this
-license. For the latest license text, refer to the mapping file itself, or the reference copy here:
-https://github.com/NeoForged/NeoForm/blob/main/Mojang.md
+```powershell
+.\gradlew.bat build
+```
 
-Additional Resources: 
-==========
-Community Documentation: https://docs.neoforged.net/  
-NeoForged Discord: https://discord.neoforged.net/
+成果物は `build/libs/continents-0.1.0+1.21.1.jar` です。Minecraft 1.21.1 / NeoForge の `mods` フォルダへ配置してください。クライアントとサーバーで使用でき、専用サーバーには画面用のクラスを読み込ませません。
+
+開発用クライアント、サーバー、GameTest は次のコマンドで起動できます。
+
+```powershell
+.\gradlew.bat runClient
+.\gradlew.bat runServer
+.\gradlew.bat runGameTestServer
+```
+
+初回は Gradle と Minecraft / NeoForge の依存関係をダウンロードします。Java の初期メモリ確保や同時処理でメモリ不足になる環境では、現在の PowerShell プロセスに次の設定を指定できます。
+
+```powershell
+$env:JAVA_TOOL_OPTIONS = '-Xms64m -Xmx2G -XX:ActiveProcessorCount=2'
+.\gradlew.bat build --no-daemon --max-workers=2
+```
+
+## 使い方
+
+新規ワールド作成画面でワールドタイプ `Continents` を選び、カスタマイズ画面でスライダーを調整します。「完了」で適用し、「キャンセル」または Esc で変更を破棄します。初期設定は `100` です。
+
+| 値 | 動作 |
+| --- | --- |
+| `0` | Minecraft 1.21.1 の標準 Overworld 生成 |
+| `5` ～ `95` | 5 刻みで、海洋側への偏りと大陸・海洋の空間スケールを調整 |
+| `100` | 調整が最大。画面表示は `Classic continents (1.6.4)` |
+
+値は海の面積のパーセントではありません。`75` を選んでも海が厳密に 75% になるわけではなく、シードや観測範囲で割合は変わります。Minecraft 1.6.4 の生成アルゴリズムを再実行する機能ではありません。
+
+変更対象は地上世界の生成設定です。ネザーとエンドは標準の設定を使用します。生成済みチャンクを再生成する機能はありません。
+
+## ワールド生成の仕組み
+
+`ContinentsScreen` が現在のバイオームソースを維持した `NoiseBasedChunkGenerator` を作り、地上世界の生成器を置き換えます。設定 `0` は `minecraft:overworld`、それ以外は `continents:continentalness_<値>` を使います。
+
+画面の登録には NeoForge 1.21.1 の `RegisterPresetEditorsEvent` を使用します。Mixin は不要です。生成処理自体は `src/main/resources/data/continents/worldgen/` にある JSON を Minecraft の標準ノイズ生成器へ渡す方式です。
+
+スライダー値を `c`、`t = c / 100` とすると、大陸性ノイズの加工は次の式になります。
+
+```text
+bias     = -0.38 × t
+xz_scale = 0.25 × (1 - 0.65 × t)
+rug      = 0.05 × t
+k        = 1 - 0.62 × t
+
+raw = bias
+    + shifted_noise(minecraft:continentalness, xz_scale)
+    + rug × noise(minecraft:continentalness, xz_scale = 1.5)
+
+C = -0.9 + k × (raw + 0.9)   (-10 ≤ raw < -0.9)
+C = raw                      (それ以外)
+```
+
+負の偏りは海洋側の領域を増やす方向へ、低い周波数は大陸と海のまとまりを大きくする方向へ作用します。細かいノイズを加え、極端な負の値は `-0.9` に向けて圧縮します。`-0.9` は補正範囲の境界で、陸と海を直接判定する閾値ではありません。
+
+加工した大陸性は、気候サンプラーによるバイオーム選択に加え、地形の `offset`・`factor`・`jaggedness` のスプラインへ入力されます。その結果は `depth`、`sloped_cheese`、最終密度、`initial_density_without_jaggedness` に伝わります。バイオーム分布と地形の両方を変更しますが、海面は全設定で Y=63 のままです。
+
+## 1.21.1 への移植上の違い
+
+移植元は Minecraft 26.2 向けです。この版では公式 Minecraft 1.21.1 の Overworld 生成設定とスプラインを基に、元 Mod と同じ大陸性の加工式を適用しました。
+
+- 26.2 の `preliminary_surface_level`、`find_top_surface`、`invert` を持ち込まず、1.21.1 の `initial_density_without_jaggedness` を使用します。
+- 洞窟、地表ルール、ブロック、バイオームは1.21.1の定義を使用します。1.21.1 に存在しない Pale Garden や硫黄洞窟の色定義は含めません。
+- バージョン固有の生成データが異なるため、同じシードでも移植元と同一の地形にはなりません。
+- リソース ID、スライダーの範囲と丸め、コマンドの構文は維持します。既存の26.2ワールドの変換は対象外です。
+
+20 種類の生成設定と各 7 種類の密度関数を同梱しています。再作成には Python 3 と `tools/generate_worldgen.py` を使えます。通常の Gradle ビルドに Python は不要です。
+
+```powershell
+python tools/generate_worldgen.py
+# 公式クライアントJARを手元で指定する場合
+python tools/generate_worldgen.py --client-jar path/to/1.21.1.jar
+```
+
+スクリプトは Mojang の公式1.21.1クライアントJARを取得し、SHA-1を確認してから生成データを読み込みます。取得したJARは `build/` に保存し、配布用Mod JARには含めません。
+
+## バイオーム分布図
+
+ゲーム管理者権限（レベル2以上）で、次のコマンドを使用できます。
+
+```text
+/continents map 0
+/continents map 50 10000
+/continents map 100 10000
+/continents map settings continents:continentalness_100 10000
+```
+
+数値は5刻みに丸めます。半径は `1000` ～ `30000` ブロック、省略時は `10000` です。現在の地上世界のシードとバイオームソースを使い、原点を中心とする一辺 `2 × 半径` の範囲を `1024 × 1024` ピクセルの PNG にします。画像はサーバーディレクトリの `continents-maps/` に保存します。同時に実行できる描画は1件です。
+
+Y=63 を quart 座標へ変換してバイオームを評価する分布図であり、チャンクや地表を生成して描画する地形図ではありません。コマンドによって現在のワールドの生成設定が変わることもありません。
+
+## 検証
+
+`runGameTestServer` は単一の GameTest で全21設定を読み込み、固定シードでのバイオーム評価と地形の高さ計算、大陸性の有限性、海面、加工式の係数と丸めを確認します。GameTest用クラスと空の構造物は開発時だけ使用し、配布JARから除外します。
+
+クライアントの自動動作確認は `.\gradlew.bat runClient -PclientSmokeTest=true` で実行できます。開発用の新規ワールドを作り、スライダーの初期値、キャンセル、値の適用、画面の再表示、ネザー・エンドの維持、ワールド作成を確認して終了します。結果は `run/client-smoke-result.txt`、画面画像は `run/screenshots/` に保存します。この検証用クラスも配布JARに含めません。
+
+GameTest は地図コマンドの標準・独自設定と不明ID、同時描画の制限、PNGのサイズ、生成器が置き換わらないことも検証します。
+
+元ソース: [Fuzilogik / continents-minecraft](https://github.com/fuzilogik2019/continents-minecraft)
+NeoForge の画面登録API: [RegisterPresetEditorsEvent](https://github.com/neoforged/NeoForge/blob/1.21.1/src/main/java/net/neoforged/neoforge/client/event/RegisterPresetEditorsEvent.java)
